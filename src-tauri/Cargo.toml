@@ -1,0 +1,25 @@
+[package]
+name = "notepade_tuned"
+version = "0.1.0"
+description = "Editor estilo Notepad com suporte a imagens"
+authors = ["Codex"]
+edition = "2021"
+
+[lib]
+name = "notepade_tuned_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.5.6", features = [] }
+
+[dependencies]
+tauri = { version = "=2.10.3", features = [] }
+tauri-plugin-dialog = "=2.6.0"
+tauri-plugin-fs = "=2.4.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+
+
+
+
