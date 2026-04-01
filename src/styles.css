@@ -291,3 +291,19 @@ button, [contenteditable="true"] { font: inherit; }
 .selection-search-dropdown { position: absolute; top: calc(100% + 6px); left: 0; display: grid; gap: 4px; min-width: 160px; padding: 6px; border: 1px solid rgba(26, 63, 100, 0.16); border-radius: 12px; background: rgba(255, 252, 247, 0.99); box-shadow: 0 12px 28px rgba(26, 49, 74, 0.16); }
 .selection-dropdown-item { min-height: 28px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #1f4d80; text-align: left; }
 .selection-dropdown-item:hover { background: rgba(42, 116, 201, 0.08); }
+
+.editor-image[style*="--kanban-color"]::after,
+.editor-annotation[style*="--kanban-color"]::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  background-color: var(--kanban-color);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  z-index: 10;
+  pointer-events: none;
+}

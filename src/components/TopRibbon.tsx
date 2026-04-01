@@ -107,6 +107,9 @@ export function TopRibbon({
         <IconButton label="Circulo" active={toolMode === "circle"} onClick={() => onSetToolMode("circle")}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
         </IconButton>
+        <IconButton label="Quadro Kanban" active={toolMode === "zone"} onClick={() => onSetToolMode("zone")}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" strokeWidth="2" /><rect x="7" y="7" width="4" height="10" fill="currentColor" /><rect x="13" y="7" width="4" height="6" fill="currentColor" /></svg>
+        </IconButton>
         <IconButton label="Markdown" active={showMarkdown} onClick={onToggleMarkdown}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4zm2 2v8h3l2-2 2 2h2V8h-2v5l-2-2-2 2V8zm11 0h1.5L17 10h2l-2.5 3L19 16h-1.5L15 13z" /></svg>
         </IconButton>

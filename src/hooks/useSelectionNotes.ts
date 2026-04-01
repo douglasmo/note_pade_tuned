@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState, type MutableRefObject, type RefObject } from "react";
 import { getQuickSearchUrl, type QuickAction } from "../lib/quickSearch";
-import type { NoteEditorState, SelectionNoteState } from "../types/editor";
+import type { NoteEditorState, SelectionNoteState, SchedulePopoverState, ExistingScheduleState } from "../types/editor";
 
 type UseSelectionNotesArgs = {
   editorRef: RefObject<HTMLDivElement | null>;
@@ -22,6 +22,8 @@ export function useSelectionNotes({
 }: UseSelectionNotesArgs) {
   const [selectionNote, setSelectionNote] = useState<SelectionNoteState | null>(null);
   const [noteEditor, setNoteEditor] = useState<NoteEditorState | null>(null);
+  const [schedulePopover, setSchedulePopover] = useState<SchedulePopoverState | null>(null);
+  const [existingSchedule, setExistingSchedule] = useState<ExistingScheduleState | null>(null);
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
 
   const openExistingInlineNote = (noteNode: HTMLElement, position: { x: number; y: number }) => {
@@ -32,6 +34,17 @@ export function useSelectionNotes({
       x: position.x,
       y: position.y,
       targetText: noteNode.textContent ?? ""
+    });
+  };
+
+  const openExistingInlineScheduleState = (scheduleNode: HTMLElement, position: { x: number; y: number }) => {
+    setSelectionNote(null);
+    setExistingSchedule({
+      id: scheduleNode.dataset.scheduleId ?? "",
+      text: scheduleNode.textContent ?? "",
+      x: position.x,
+      y: position.y,
+      time: Number(scheduleNode.dataset.scheduleTime ?? 0)
     });
   };
 
@@ -120,7 +133,47 @@ export function useSelectionNotes({
     setStatus("Nota removida");
   };
 
-  const openQuickSearch = async (action: Exclude<QuickAction, "note" | "copy">, query: string) => {
+  const saveInlineSchedule = (text: string, triggerAt: number, id: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const range = noteRangeRef.current;
+    if (range && !range.collapsed) {
+      const scheduleNode = document.createElement("span");
+      scheduleNode.className = "inline-schedule";
+      scheduleNode.dataset.scheduleId = id;
+      scheduleNode.dataset.scheduleTime = String(triggerAt);
+      scheduleNode.contentEditable = "false";
+      scheduleNode.style.textDecoration = "underline";
+      scheduleNode.style.textDecorationStyle = "dashed";
+      scheduleNode.style.textDecorationColor = "#4a90e2";
+      scheduleNode.style.cursor = "pointer";
+      scheduleNode.appendChild(range.extractContents());
+      range.insertNode(scheduleNode);
+    }
+    
+    setSelectionNote(null);
+    setSchedulePopover(null);
+    noteRangeRef.current = null;
+    syncEditorToState();
+    refreshEditorReadingTone();
+  };
+
+  const removeInlineSchedule = (id: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const node = editor.querySelector(`span.inline-schedule[data-schedule-id="${id}"]`) as HTMLElement | null;
+    if (node) {
+      unwrapInlineNote(node);
+      syncEditorToState();
+      refreshEditorReadingTone();
+    }
+    setExistingSchedule(null);
+    setStatus("Agendamento removido");
+  };
+
+  const openQuickSearch = async (action: Exclude<QuickAction, "note" | "schedule" | "copy">, query: string) => {
     const url = getQuickSearchUrl(action, query);
 
     try {
@@ -150,7 +203,10 @@ export function useSelectionNotes({
   };
 
   const runQuickAction = async (action: QuickAction) => {
-    const term = selectionNote?.text?.trim();
+    if (!selectionNote) {
+      return;
+    }
+    const term = selectionNote.text.trim();
     if (!term) {
       return;
     }
@@ -158,6 +214,14 @@ export function useSelectionNotes({
     switch (action) {
       case "note":
         openNoteEditorForSelection();
+        break;
+      case "schedule":
+        setSchedulePopover({ 
+          x: selectionNote.x, 
+          y: selectionNote.y, 
+          text: term 
+        });
+        setSelectionNote(null);
         break;
       case "google":
       case "wikipedia":
@@ -222,18 +286,39 @@ export function useSelectionNotes({
     openExistingInlineNote(noteNode, { x: rect.left + rect.width / 2, y: rect.bottom + 10 });
   };
 
+  const openInlineScheduleFromSelection = (node: HTMLElement) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const rect = node.getBoundingClientRect();
+    const point = getOverlayPoint(editor, rect);
+    openExistingInlineScheduleState(node, { x: point.x, y: point.y + rect.height + 10 });
+  };
+
+  const openInlineScheduleFromPointer = (node: HTMLElement) => {
+    const rect = node.getBoundingClientRect();
+    openExistingInlineScheduleState(node, { x: rect.left + rect.width / 2, y: rect.bottom + 10 });
+  };
+
   return {
     selectionNote,
     noteEditor,
+    schedulePopover,
+    existingSchedule,
     searchMenuOpen,
     setSelectionNote,
     setNoteEditor,
+    setSchedulePopover,
+    setExistingSchedule,
     setSearchMenuOpen,
     saveInlineNote,
     removeInlineNote,
+    saveInlineSchedule,
+    removeInlineSchedule,
     runQuickAction,
     updateSelectionNoteState,
     openInlineNoteFromSelection,
-    openInlineNoteFromPointer
+    openInlineNoteFromPointer,
+    openInlineScheduleFromSelection,
+    openInlineScheduleFromPointer
   };
 }

@@ -14,7 +14,7 @@ export type PersistedWorkspace = {
   tabs: DocumentTab[];
 };
 
-export type AnnotationType = "pen" | "arrow" | "square" | "circle";
+export type AnnotationType = "pen" | "arrow" | "square" | "circle" | "zone";
 
 export type ToolMode = "select" | AnnotationType;
 
@@ -36,6 +36,7 @@ export type AnnotationGeometry = {
   startY?: number;
   endX?: number;
   endY?: number;
+  text?: string;
 };
 
 export type AnnotationPayload = {
@@ -66,6 +67,20 @@ export type NoteEditorState = {
   x: number;
   y: number;
   targetText: string;
+};
+
+export type SchedulePopoverState = {
+  x: number;
+  y: number;
+  text: string;
+};
+
+export type ExistingScheduleState = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  time: number;
 };
 
 export type IconButtonProps = {

@@ -367,7 +367,7 @@ export const buildArrowAnnotation = (id: string, color: string, start: Point, en
   };
 };
 
-export const buildShapeAnnotation = (id: string, annotationType: "square" | "circle", color: string, start: Point, end: Point, strokeWidth: number): AnnotationPayload => {
+export const buildShapeAnnotation = (id: string, annotationType: "square" | "circle" | "zone", color: string, start: Point, end: Point, strokeWidth: number): AnnotationPayload => {
   const padding = Math.max(10, strokeWidth * 2.5);
   const deltaX = end.x - start.x;
   const deltaY = end.y - start.y;
@@ -405,6 +405,8 @@ export const getAnnotationCreatedStatus = (annotationType: AnnotationType) => {
       return "Seta criada";
     case "square":
       return "Quadrado criado";
+    case "zone":
+      return "Zona Kanban criada";
     case "circle":
       return "Circulo criado";
     default:

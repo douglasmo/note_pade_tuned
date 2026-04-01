@@ -1,6 +1,6 @@
-export type QuickAction = "note" | "google" | "wikipedia" | "translate" | "chatgpt" | "youtube" | "definition" | "synonyms" | "maps" | "copy";
+export type QuickAction = "note" | "schedule" | "google" | "wikipedia" | "translate" | "chatgpt" | "youtube" | "definition" | "synonyms" | "maps" | "copy";
 
-const QUICK_SEARCH_BASE_URL: Record<Exclude<QuickAction, "note" | "copy">, string> = {
+const QUICK_SEARCH_BASE_URL: Record<Exclude<QuickAction, "note" | "schedule" | "copy">, string> = {
   google: "https://www.google.com/search?q=",
   wikipedia: "https://pt.wikipedia.org/wiki/Especial:Pesquisar?search=",
   translate: "https://translate.google.com/?sl=auto&tl=pt&text=",
@@ -11,5 +11,5 @@ const QUICK_SEARCH_BASE_URL: Record<Exclude<QuickAction, "note" | "copy">, strin
   maps: "https://www.google.com/maps/search/"
 };
 
-export const getQuickSearchUrl = (action: Exclude<QuickAction, "note" | "copy">, query: string) =>
+export const getQuickSearchUrl = (action: Exclude<QuickAction, "note" | "schedule" | "copy">, query: string) =>
   `${QUICK_SEARCH_BASE_URL[action]}${encodeURIComponent(query)}`;

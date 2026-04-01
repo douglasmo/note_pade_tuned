@@ -10,11 +10,12 @@ import {
 } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { MarkdownPanel, NotePopover, SelectionActions } from "./components/EditorOverlays";
+import { MarkdownPanel, NotePopover, SelectionActions, SchedulePopover, RemindersDialog, ExistingSchedulePopover } from "./components/EditorOverlays";
 import { TopRibbon } from "./components/TopRibbon";
 import { useCanvasInteractions } from "./hooks/useCanvasInteractions";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { useSelectionNotes } from "./hooks/useSelectionNotes";
+import { useReminders } from "./hooks/useReminders";
 import {
   COLOR_PALETTE,
   MIN_IMAGE_WIDTH,
@@ -52,7 +53,8 @@ import {
   sanitizeFileName,
   stripReadingToneMarkup,
   toErrorMessage,
-  encodeClipboardImage
+  encodeClipboardImage,
+  getAnnotationCreatedStatus
 } from "./lib/editorDom";
 import { createMarkdownPreview } from "./lib/documentFormat";
 import { renderTabStatus } from "./lib/workspace";
@@ -87,6 +89,8 @@ function App() {
   const [strokeColor, setStrokeColor] = useState(COLOR_PALETTE[0]);
   const [strokeWidth, setStrokeWidth] = useState(4);
 
+  const { addReminder, activeReminders, dismissReminder, removeReminder } = useReminders();
+
   const {
     tabs,
     activeTabId,
@@ -108,16 +112,24 @@ function App() {
   const {
     selectionNote,
     noteEditor,
+    schedulePopover,
+    existingSchedule,
     searchMenuOpen,
     setSelectionNote,
     setNoteEditor,
+    setSchedulePopover,
+    setExistingSchedule,
     setSearchMenuOpen,
     saveInlineNote,
     removeInlineNote,
+    saveInlineSchedule,
+    removeInlineSchedule,
     runQuickAction,
     updateSelectionNoteState,
     openInlineNoteFromSelection,
-    openInlineNoteFromPointer
+    openInlineNoteFromPointer,
+    openInlineScheduleFromSelection,
+    openInlineScheduleFromPointer
   } = useSelectionNotes({
     editorRef,
     noteRangeRef,
@@ -133,6 +145,7 @@ function App() {
     removeSelectedElement,
     copySelectedImage,
     handleEditorClick,
+    handleEditorDoubleClick,
     handleEditorPointerDown,
     handleEditorKeyDown,
     handleInput,
@@ -152,6 +165,8 @@ function App() {
     refreshEditorReadingTone,
     openInlineNoteFromSelection,
     openInlineNoteFromPointer,
+    openInlineScheduleFromSelection,
+    openInlineScheduleFromPointer,
     clearNoteEditor: () => setNoteEditor(null),
     clearSelectionNote: () => setSelectionNote(null)
   });
@@ -227,6 +242,8 @@ function App() {
 
     const clearSelectionWidgets = () => {
       setSelectionNote(null);
+      setSchedulePopover(null);
+      setExistingSchedule(null);
       if (!document.activeElement || !(document.activeElement instanceof HTMLTextAreaElement)) {
         setNoteEditor((current) => current?.id ? current : null);
       }
@@ -391,6 +408,29 @@ function App() {
       }
     };
 
+    const checkZoneIntersection = (editor: HTMLElement, node: HTMLElement) => {
+      const rect = node.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      const zones = Array.from(editor.querySelectorAll('div.editor-annotation[data-annotation-type="zone"]')) as HTMLElement[];
+      
+      let foundZoneColor = "";
+      for (const zone of zones) {
+        const zRect = zone.getBoundingClientRect();
+        if (centerX >= zRect.left && centerX <= zRect.right && centerY >= zRect.top && centerY <= zRect.bottom) {
+          foundZoneColor = zone.dataset.color || "";
+          break;
+        }
+      }
+
+      if (foundZoneColor) {
+        node.style.setProperty("--kanban-color", foundZoneColor);
+      } else {
+        node.style.removeProperty("--kanban-color");
+      }
+    };
+
     const handlePointerUp = () => {
       const editor = editorRef.current;
       if (!editor) {
@@ -403,20 +443,29 @@ function App() {
       }
 
       if (imageDragRef.current) {
-        getImageFigure(editor, imageDragRef.current.id)?.classList.remove("editor-image-dragging");
+        const node = getImageFigure(editor, imageDragRef.current.id);
+        if (node) {
+          node.classList.remove("editor-image-dragging");
+          checkZoneIntersection(editor, node);
+        }
         imageDragRef.current = null;
         setStatus("Imagem movida");
       }
 
       if (annotationDragRef.current) {
-        getAnnotationNode(editor, annotationDragRef.current.id)?.classList.remove("editor-annotation-dragging");
+        const node = getAnnotationNode(editor, annotationDragRef.current.id);
+        if (node) {
+          node.classList.remove("editor-annotation-dragging");
+          checkZoneIntersection(editor, node);
+        }
         annotationDragRef.current = null;
         setStatus("Anotacao movida");
       }
 
       if (drawRef.current) {
+        const annotationType = drawRef.current.annotationType;
         drawRef.current = null;
-        setStatus(toolMode === "arrow" ? "Seta criada" : "Desenho criado");
+        setStatus(getAnnotationCreatedStatus(annotationType));
       }
     };
 
@@ -495,6 +544,7 @@ function App() {
             onInput={handleInput}
             onPaste={handlePaste}
             onClick={handleEditorClick}
+            onDoubleClick={handleEditorDoubleClick}
             onMouseUp={updateSelectionNoteState}
             onPointerDown={handleEditorPointerDown}
             onKeyDown={handleEditorKeyDown}
@@ -515,8 +565,32 @@ function App() {
             onSave={saveInlineNote}
           />
 
+          <SchedulePopover
+            schedulePopover={schedulePopover}
+            onClose={() => setSchedulePopover(null)}
+            onSchedule={(text, date) => {
+              const id = addReminder(text, date);
+              saveInlineSchedule(text, date.getTime(), id);
+              setStatus("Lembrete agendado");
+            }}
+          />
+
+          <ExistingSchedulePopover
+            existingSchedule={existingSchedule}
+            onRemove={(id: string) => {
+              removeReminder(id);
+              removeInlineSchedule(id);
+            }}
+            onClose={() => setExistingSchedule(null)}
+          />
+
           <MarkdownPanel showMarkdown={showMarkdown} markdownPreview={markdownPreview} />
         </section>
+
+        <RemindersDialog
+          activeReminders={activeReminders}
+          onDismiss={dismissReminder}
+        />
 
         <footer className="statusbar">
           <span>{status}</span>
